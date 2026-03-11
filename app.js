@@ -66,3 +66,9 @@ window.subirEvidencia = async function() {
 
     document.getElementById("status").innerText = "Evidencia registrada: " + folio;
 };
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js')
+    .then(() => console.log("Service Worker registrado correctamente"))
+    .catch(err => console.log("Error al registrar SW", err));
+}
