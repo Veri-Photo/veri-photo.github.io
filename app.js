@@ -16,68 +16,54 @@ const db = getFirestore(app);
 
 let selectedFile;
 let coordsActuales = null;
-let mostrandoExito = false; // Llave para que el GPS no borre el folio
 const statusTxt = document.getElementById("status");
 
-// --- 2. BLOQUEO DE ESCRITORIO ---
+// --- 2. BLOQUEO DE ESCRITORIO (Solo Celulares) ---
 const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 if (!isMobile) {
-    document.body.innerHTML = "<h1>🚫 ACCESO DENEGADO</h1><p>VeriPhoto solo funciona en dispositivos móviles.</p>";
+    document.body.innerHTML = "<h1>🚫 ACCESO DENEGADO</h1><p>VeriPhoto solo funciona en dispositivos móviles para garantizar la integridad del GPS.</p>";
     throw new Error("PWA bloqueada en PC");
 }
 
-// --- 3. GPS EN TIEMPO REAL (VERSIÓN BLINDADA) ---
-window.activarGPS = function() {
+// --- 3. ACTIVACIÓN ANTICIPADA DEL GPS ---
+// Esto hace que el celular pida permiso apenas abras la app
+function activarGPS() {
     if ("geolocation" in navigator) {
-        // Usamos una variable para detener el rastreo si es necesario
         navigator.geolocation.watchPosition(
             (pos) => {
                 coordsActuales = pos.coords;
-                
-                // CRUCIAL: Si estamos mostrando el éxito, SALIMOS de la función y no hacemos nada
-                if (mostrandoExito === true) return; 
-
                 statusTxt.innerText = `GPS Conectado (Precisión: ${Math.round(pos.coords.accuracy)}m) ✅`;
                 statusTxt.style.color = "green";
             },
             (err) => {
-                if (mostrandoExito === true) return;
-                statusTxt.innerText = "⚠️ Error: Activa la ubicación.";
+                statusTxt.innerText = "⚠️ Error: Activa la ubicación en tu celular.";
                 statusTxt.style.color = "red";
             },
-            { 
-                enableHighAccuracy: true,
-                timeout: 5000,
-                maximumAge: 0 
-            }
+            { enableHighAccuracy: true }
         );
     }
 }
+activarGPS();
 
-// --- 4. VALIDACIÓN DE CÁMARA ---
+// --- 4. VALIDACIÓN DE CAPTURA (CÁMARA EN VIVO) ---
 document.getElementById("cameraInput").addEventListener("change", (e) => {
     const file = e.target.files[0];
-    if (!file) return;
-
     const ahora = Date.now();
     const tiempoArchivo = file.lastModified;
     const desfase = (ahora - tiempoArchivo) / 1000;
 
+    // Si la foto tiene más de 120 segundos, se rechaza
     if (desfase > 120) {
-        alert("❌ ERROR: La foto no es reciente. Captúrala en vivo.");
+        alert("❌ ERROR: La foto no es reciente. Debes capturarla en vivo.");
         e.target.value = "";
         selectedFile = null;
-        document.getElementById("btnSubir").style.display = "none";
     } else {
         selectedFile = file;
-        mostrandoExito = false; // Resetear la llave si se toma una nueva foto
-        statusTxt.innerText = "Foto capturada y validada 📸";
-        statusTxt.style.color = "#007bff";
-        document.getElementById("btnSubir").style.display = "block";
+        statusTxt.innerText = "Foto capturada y validada temporalmente.";
     }
 });
 
-// --- 5. COMPRESIÓN DE IMAGEN ---
+// --- 5. OPTIMIZACIÓN Y COMPRESIÓN (1600x1200 @ 70%) ---
 async function optimizarImagen(file) {
     return new Promise((resolve) => {
         const reader = new FileReader();
@@ -104,19 +90,17 @@ async function optimizarImagen(file) {
     });
 }
 
-// --- 6. SUBIDA FINAL CON BLOQUEO DE GPS ---
+// --- 6. SUBIDA FINAL CON TRIPLE TIEMPO ---
 window.subirEvidencia = async function() {
     if(!selectedFile) return alert("Primero captura una foto.");
     if(!coordsActuales) return alert("Esperando señal de GPS...");
 
-    statusTxt.innerText = "⏳ Certificando evidencia...";
-    statusTxt.style.color = "orange";
-    document.getElementById("btnSubir").style.display = "none";
+    statusTxt.innerText = "Certificando evidencia...";
 
     try {
         const fotoBase64 = await optimizarImagen(selectedFile);
         
-        // Generar Hash SHA-256
+        // Generar Hash SHA-256 para integridad del archivo
         const buffer = await selectedFile.arrayBuffer();
         const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
         const hash = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, "0")).join("");
@@ -132,34 +116,14 @@ window.subirEvidencia = async function() {
             precision: coordsActuales.accuracy,
             foto: fotoBase64,
             fecha_celular: new Date().toISOString(),
-            fecha_servidor: serverTimestamp(),
+            fecha_servidor: serverTimestamp(), // EL SELLO DE VERDAD
             verificado: true
         });
 
-        // ACTIVAR BLOQUEO DE TEXTO PARA MOSTRAR FOLIO
-        mostrandoExito = true;
-
-        statusTxt.innerHTML = `
-            <div style="background: #d4edda; color: #155724; padding: 15px; border-radius: 10px; border: 1px solid #c3e6cb; margin-top: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                <strong style="font-size: 1.2rem;">✅ ¡Subida Exitosa!</strong><br>
-                <span style="font-size: 0.9rem;">Folio único de certificación:</span><br>
-                <code style="font-size: 1.1rem; background: white; padding: 4px 8px; border-radius: 4px; display: inline-block; margin-top: 8px; border: 1px solid #ddd; color: #333;">${folio}</code>
-                <p style="font-size: 0.8rem; margin-top: 10px; color: #666;">Copia este folio para tu reporte.</p>
-            </div>
-        `;
-        
-        alert("✅ Evidencia certificada.\n\nFolio: " + folio);
-
-        // Resetear variables internas pero dejar el mensaje en pantalla
-        selectedFile = null;
-        document.getElementById("cameraInput").value = "";
-
+        statusTxt.innerText = "✅ ¡Éxito! Folio: " + folio;
+        alert("Evidencia guardada correctamente con sello de tiempo.");
     } catch (error) {
         console.error(error);
-        mostrandoExito = false;
-        statusTxt.innerText = "❌ Error al subir. Revisa tu internet.";
-        statusTxt.style.color = "red";
-        document.getElementById("btnSubir").style.display = "block";
-        alert("Error al conectar con VeriPhoto Cloud.");
+        alert("Error al subir. Revisa tu conexión.");
     }
 };
