@@ -26,29 +26,33 @@ if (!isMobile) {
     throw new Error("PWA bloqueada en PC");
 }
 
-// --- 3. GPS EN TIEMPO REAL (CORREGIDO) ---
+// --- 3. GPS EN TIEMPO REAL (VERSIÓN BLINDADA) ---
 window.activarGPS = function() {
     if ("geolocation" in navigator) {
+        // Usamos una variable para detener el rastreo si es necesario
         navigator.geolocation.watchPosition(
             (pos) => {
                 coordsActuales = pos.coords;
-                // Solo actualizamos el texto si NO acabamos de subir una foto con éxito
-                if (!mostrandoExito) {
-                    statusTxt.innerText = `GPS Conectado (Precisión: ${Math.round(pos.coords.accuracy)}m) ✅`;
-                    statusTxt.style.color = "green";
-                }
+                
+                // CRUCIAL: Si estamos mostrando el éxito, SALIMOS de la función y no hacemos nada
+                if (mostrandoExito === true) return; 
+
+                statusTxt.innerText = `GPS Conectado (Precisión: ${Math.round(pos.coords.accuracy)}m) ✅`;
+                statusTxt.style.color = "green";
             },
             (err) => {
-                if (!mostrandoExito) {
-                    statusTxt.innerText = "⚠️ Error: Activa la ubicación en tu celular.";
-                    statusTxt.style.color = "red";
-                }
+                if (mostrandoExito === true) return;
+                statusTxt.innerText = "⚠️ Error: Activa la ubicación.";
+                statusTxt.style.color = "red";
             },
-            { enableHighAccuracy: true }
+            { 
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0 
+            }
         );
     }
 }
-activarGPS();
 
 // --- 4. VALIDACIÓN DE CÁMARA ---
 document.getElementById("cameraInput").addEventListener("change", (e) => {
