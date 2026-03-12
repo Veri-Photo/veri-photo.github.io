@@ -26,8 +26,7 @@ if (!isMobile) {
 }
 
 // --- 3. ACTIVACIÓN ANTICIPADA DEL GPS ---
-// Esto hace que el celular pida permiso apenas abras la app
-function activarGPS() {
+window.activarGPS = function() { // Agregamos window.
     if ("geolocation" in navigator) {
         navigator.geolocation.watchPosition(
             (pos) => {
@@ -43,7 +42,7 @@ function activarGPS() {
         );
     }
 }
-activarGPS();
+activarGPS(); // Se ejecuta al cargar, y también cuando picas el botón
 
 // --- 4. VALIDACIÓN DE CAPTURA (CÁMARA EN VIVO) ---
 document.getElementById("cameraInput").addEventListener("change", (e) => {
