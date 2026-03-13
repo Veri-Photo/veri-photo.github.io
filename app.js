@@ -1,30 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
 import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
-// 1. BLOQUEO RADICAL: Se ejecuta antes de cualquier lógica de Firebase o GPS
-const ua = navigator.userAgent;
-const esMovil = /android|iphone|ipad|ipod/i.test(ua);
-
-if (!esMovil) {
-    // Detenemos la carga de cualquier otro recurso del navegador
-    window.stop(); 
-    
-    // Reemplazamos la interfaz por el mensaje de error
-    document.body.innerHTML = `
-        <div class="container text-center py-5" style="margin-top: 20vh;">
-            <i class="bi bi-shield-slash text-danger" style="font-size: 5rem;"></i>
-            <h2 class="fw-bold mt-4">Acceso Solo Móvil</h2>
-            <p class="text-muted">Por seguridad, VeriPhoto Pro requiere sensores físicos (GPS/Acelerómetro) de un dispositivo móvil.</p>
-            <div class="alert alert-danger d-inline-block mt-3">
-                Escritorio Detectado: No se permite la certificación.
-            </div>
-        </div>
-    `;
-    // Lanzamos el error para romper la ejecución del script
-    throw new Error("Ejecución bloqueada: Entorno de escritorio.");
-}
-
-// 2. CONFIGURACIÓN (Solo se alcanza si es celular)
 const firebaseConfig = {
     apiKey: "AIzaSyCDrXohcOJZcsMgqmvXakk4SJnaj7hgzDo",
     authDomain: "veriphoto-2c95d.firebaseapp.com",
@@ -34,12 +10,11 @@ const firebaseConfig = {
     appId: "1:1005950289147:web:a8fddbf7ab082f99335c5e"
 };
 
-// ... Resto de tu código (initializeApp, activarGPS, etc.)
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 let coordsActuales = null;
-// ... (resto de tu código app.js igual que antes)
+let mostrandoExito = false;
 const statusTxt = document.getElementById("status");
 const btnPrincipal = document.getElementById("btnPrincipal");
 
