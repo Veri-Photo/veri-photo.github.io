@@ -1,35 +1,30 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
 import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
-// 1. FUNCIÓN DE DETECCIÓN MEJORADA
-function esDispositivoMovil() {
-    const ua = navigator.userAgent;
-    // Retorna true solo si es Android o iOS
-    return /Android|iPhone|iPad|iPod/i.test(ua);
-}
+// 1. BLOQUEO RADICAL: Se ejecuta antes de cualquier lógica de Firebase o GPS
+const ua = navigator.userAgent;
+const esMovil = /android|iphone|ipad|ipod/i.test(ua);
 
-const sistemaDetectado = esDispositivoMovil();
-
-// 2. BLOQUEO FULMINANTE SI NO ES MÓVIL
-if (!sistemaDetectado) {
-    // Borramos TODO el HTML del body inmediatamente
+if (!esMovil) {
+    // Detenemos la carga de cualquier otro recurso del navegador
+    window.stop(); 
+    
+    // Reemplazamos la interfaz por el mensaje de error
     document.body.innerHTML = `
-        <div class="container text-center py-5" style="margin-top: 20vh; font-family: sans-serif;">
-            <i class="bi bi-shield-lock-fill text-danger" style="font-size: 5rem;"></i>
-            <h2 class="fw-bold mt-4">ENTORNO NO SEGURO</h2>
-            <p class="text-muted">VeriPhoto Pro solo admite capturas desde la cámara de un dispositivo móvil real para garantizar la trazabilidad.</p>
-            <div class="alert alert-danger d-inline-block mt-2">
-                <strong>Acceso denegado:</strong> Escritorio / PC Detectado
+        <div class="container text-center py-5" style="margin-top: 20vh;">
+            <i class="bi bi-shield-slash text-danger" style="font-size: 5rem;"></i>
+            <h2 class="fw-bold mt-4">Acceso Solo Móvil</h2>
+            <p class="text-muted">Por seguridad, VeriPhoto Pro requiere sensores físicos (GPS/Acelerómetro) de un dispositivo móvil.</p>
+            <div class="alert alert-danger d-inline-block mt-3">
+                Escritorio Detectado: No se permite la certificación.
             </div>
-            <p class="mt-4 small text-secondary">Por favor, abre este sitio desde tu celular en Santa Catarina.</p>
         </div>
     `;
-    // Detenemos cualquier ejecución posterior
-    window.stop(); 
-    throw new Error("Bloqueo de seguridad: Escritorio no permitido.");
+    // Lanzamos el error para romper la ejecución del script
+    throw new Error("Ejecución bloqueada: Entorno de escritorio.");
 }
 
-// 3. SI PASA LA PRUEBA, CONTINÚA EL CÓDIGO NORMAL
+// 2. CONFIGURACIÓN (Solo se alcanza si es celular)
 const firebaseConfig = {
     apiKey: "AIzaSyCDrXohcOJZcsMgqmvXakk4SJnaj7hgzDo",
     authDomain: "veriphoto-2c95d.firebaseapp.com",
@@ -39,6 +34,7 @@ const firebaseConfig = {
     appId: "1:1005950289147:web:a8fddbf7ab082f99335c5e"
 };
 
+// ... Resto de tu código (initializeApp, activarGPS, etc.)
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
