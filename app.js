@@ -1,13 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-app.js";
 import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/12.10.0/firebase-firestore.js";
 
-// --- 0. SEGURIDAD DE PROTOCOLO ---
-if (location.protocol !== "https:" && location.hostname !== "localhost") {
-    alert("❌ CONEXIÓN INSEGURA: VeriPhoto requiere HTTPS para certificar evidencias.");
-    // Esta versión conserva parámetros (?folio=123) y anclas (#seccion)
-    location.replace(`https://${location.host}${location.pathname}${location.search}${location.hash}`);
-}
-
 // Bloqueo de IFrames (Anti-Clickjacking)
 if (window.top !== window.self) {
     document.body.innerHTML = "<h1>Acceso Bloqueado</h1><p>Esta aplicación no puede ejecutarse dentro de un marco externo por razones de seguridad.</p>";
