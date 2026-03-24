@@ -107,7 +107,7 @@ const acc = event.accelerationIncludingGravity;
 if (lecturasAccel.length < 64 && estadoUI !== "agitando" && !verificadoPorAgite) {
 actualizarUI(
 "agitando",
-<i class="bi bi-phone-vibrate text-primary"></i> Agite el teléfono 1s para continuar,
+`<i class="bi bi-phone-vibrate text-primary"></i> Agite el teléfono 1s para continuar`,
 "bg-primary-subtle text-primary border border-primary-subtle"
 );
 }
@@ -179,7 +179,7 @@ setTimeout(() => {
     // NO llamamos a activar interfaz aquí.  
     tiempoLecturaConcluido = true;   
     console.log("Refrescando señal GPS...");  
-}, 3000);
+}, 1000);
 
 } else {
 // No pasó la prueba: Limpiamos buffers pero NO cambiamos el mensaje de la UI
@@ -384,7 +384,7 @@ guardarDatos();
 registrarLog("certificacion");
 // Primero: Aseguramos que el botón sea INCLICABLE visualmente
 btnPrincipal.disabled = true;
-btnPrincipal.innerHTML = <i class="bi bi-shield-check"></i> GUARDADO CON ÉXITO;
+btnPrincipal.innerHTML = `<i class="bi bi-shield-check"></i> GUARDADO CON ÉXITO`;
 
 // Segundo: Reseteamos seguridad interna (Limpieza Pro)  
 verificadoPorAgite = false;  
@@ -400,13 +400,16 @@ metricaVariacionG = 0;
 // Al final del try en cameraInput:
 actualizarUI(
 "exito",
-✅ CERTIFICADA <br><code class="fs-5 text-white">${folio}</code>,
+`✅ CERTIFICADA <br><code class="fs-5 text-white">${folio}</code>`,
 "bg-success text-white px-2 shadow-sm"
 );
 
 btnPrincipal.disabled = false;
-btnPrincipal.className = "btn btn-dark w-100 shadow mt-2";
-btnPrincipal.innerHTML = FINALIZAR / SIGUIENTE <i class="bi bi-arrow-right"></i>;
+btnPrincipal.style.backgroundColor = "#0d6efd"; // El azul original de tu botón
+btnPrincipal.style.borderColor = "#0d6efd";
+btnPrincipal.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i> FINALIZAR`;
+
+
 
 // Cambiamos el comportamiento del botón para que reinicie la app
 btnPrincipal.onclick = () => { window.location.reload(); };
@@ -414,24 +417,24 @@ btnPrincipal.onclick = () => { window.location.reload(); };
 } catch (error) {
 if (error.message.includes("LÍMITE")) {
 alert(error.message);
-statusTxt.innerHTML = <i class="bi bi-clock-history"></i> ${error.message};
+statusTxt.innerHTML = `<i class="bi bi-clock-history"></i> ${error.message}`;
 statusTxt.className = "status-box bg-warning text-dark";
 }
 // Validación para iPhone
 if (error.message.includes("Sensores inactivos")) {
 alert("❌ ERROR: VeriPhoto necesita acceso a los sensores de movimiento.");
-statusTxt.innerHTML = <i class="bi bi-shield-slash text-danger"></i> Permiso denegado;
+statusTxt.innerHTML = `<i class="bi bi-shield-slash text-danger"></i> Permiso denegado`;
 statusTxt.className = "status-box bg-danger-subtle text-danger border border-danger-subtle";
 }
 // Validación de pérdida de GPS
 else if (!coordsActuales) {
-statusTxt.innerHTML = <i class="bi bi-geo-off text-danger"></i> Error: Ubicación perdida;
+statusTxt.innerHTML = `<i class="bi bi-geo-off text-danger"></i> Error: Ubicación perdida`;
 statusTxt.className = "status-box bg-danger-subtle text-danger border border-danger-subtle";
 }
 // Otros errores de integridad (como el agite no completado)
 else {
-alert(❌ ERROR DE SEGURIDAD:\n${error.message});
-statusTxt.innerHTML = <i class="bi bi-exclamation-triangle-fill"></i> Error de integridad;
+alert(`❌ ERROR DE SEGURIDAD:\n${error.message}`);
+statusTxt.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> Error de integridad`;
 statusTxt.className = "status-box bg-warning-subtle text-warning border border-warning-subtle";
 }
 
