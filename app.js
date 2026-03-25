@@ -206,23 +206,21 @@ longitude: pos.coords.longitude,
 accuracy: pos.coords.accuracy,
 timestamp: Date.now()
 };
-if (tiempoLecturaConcluido && !gpsEsReciente) {
-gpsEsReciente = true; // Bloqueamos para que solo ejecute esto una vez
-estadoUI = "gps";
+  // 🔥 AQUÍ VA TU BLOQUE
+  if (tiempoLecturaConcluido && coordsActuales && !gpsEsReciente) {
+      gpsEsReciente = true;
+      estadoUI = "gps";
 
-actualizarUI(  
-            "gps",  
-            `<i class="bi bi-geo-alt-fill text-success"></i> GPS Activo (±${Math.round(pos.coords.accuracy)}m)`,  
-            "bg-success-subtle text-success border border-success-subtle"  
-        );  
+      actualizarUI(
+          "gps",
+          `<i class="bi bi-geo-alt-fill text-success"></i> GPS Activo (±${Math.round(pos.coords.accuracy)}m)`,
+          "bg-success-subtle text-success border border-success-subtle"
+      );
 
-        // Activamos el botón en este preciso milisegundo  
-        btnPrincipal.disabled = false;  
-        btnPrincipal.className = "btn btn-primary w-100 shadow";  
-        btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;  
-    }   
-    // Si la app ya está en modo GPS normal, solo actualizamos el texto  
-    else if (estadoUI === "gps" || (estadoUI === "inicial" && coordsActuales)) {  
+      btnPrincipal.disabled = false;
+      btnPrincipal.className = "btn btn-primary w-100 shadow";
+      btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
+  } else if (estadoUI === "gps" || (estadoUI === "inicial" && coordsActuales)) {  
         actualizarUI(  
             "gps",  
             `<i class="bi bi-geo-alt-fill text-success"></i> GPS Activo (±${Math.round(pos.coords.accuracy)}m)`,  
@@ -255,7 +253,7 @@ statusTxt.innerText = "GPS no soportado en este navegador";
 if (esIOS) {
   // Modo iPhone → esperar interacción real
   btnPrincipal.disabled = false;
-  btnPrincipal.innerHTML = "🔐 Activar sensores y ubicación";
+  btnPrincipal.innerHTML = "Activar sensores y ubicación";
 
   btnPrincipal.onclick = async () => {
     btnPrincipal.disabled = true;
@@ -264,7 +262,7 @@ if (esIOS) {
     activarGPS();
     await activarSensores();
 
-    btnPrincipal.innerHTML = "✅ Permisos activados";
+    btnPrincipal.innerHTML = "Permisos activados";
   };
 
 } else {
@@ -426,7 +424,8 @@ analizando = false; // Aseguramos que el semáforo se libere
 metricaFlatness = 0;  
 metricaEnergia = 0;  
 metricaVariacionG = 0;
-
+gpsEsReciente = false;
+tiempoLecturaConcluido = false;
 // Al final del try en cameraInput:
 actualizarUI(
   "exito",
