@@ -60,23 +60,7 @@ let gpsEsReciente = false;
 
 const statusTxt = document.getElementById("status");
 const btnPrincipal = document.getElementById("btnPrincipal");
-btnPrincipal.addEventListener("click", () => {
-  if (estadoUI === "gps") {
-    const input = document.getElementById("cameraInput");
 
-// 🔥 BLOQUEO CRÍTICO
-btnPrincipal.disabled = true;
-estadoUI = "procesando";
-
-input.value = "";
-input.click();
-  }
-});
-btnPrincipal.addEventListener("click", () => {
-  if (estadoUI === "exito") {
-    window.location.reload();
-  }
-});
 // --- 1. SENSORES DE MOVIMIENTO ---
 async function activarSensores() {
 if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
@@ -97,7 +81,7 @@ const acc = event.accelerationIncludingGravity;
     const rot = event.rotationRate;  
       
     // Protección: Si el sensor no responde o el GPS no está listo, ignoramos  
-     if (!acc || !rot || (!coordsActuales && !esIOS)) return; 
+    if (!acc || !rot || !coordsActuales) return;  
     sensorActivo = true;  
     const ahora = Date.now();  
     if (ahora - ultimoRegistro > 20) {  
@@ -180,7 +164,7 @@ metricaEnergia = energia;
 metricaVariacionG = variacionGyro;
 
 // 3. Umbrales de Seguridad  
-if (flatness > 0.60 && energia > 12 && resGyro > 8) {  
+if (flatness > 0.35 && energia > 1.2 && resGyro > 0.8) {  
 verificadoPorAgite = true;  
   
 // Bloqueamos la UI con el estado "verificado"  
@@ -222,21 +206,23 @@ longitude: pos.coords.longitude,
 accuracy: pos.coords.accuracy,
 timestamp: Date.now()
 };
-  // 🔥 AQUÍ VA TU BLOQUE
-  if (tiempoLecturaConcluido && coordsActuales && !gpsEsReciente) {
-      gpsEsReciente = true;
-      estadoUI = "gps";
+if (tiempoLecturaConcluido && !gpsEsReciente) {
+gpsEsReciente = true; // Bloqueamos para que solo ejecute esto una vez
+estadoUI = "gps";
 
-      actualizarUI(
-          "gps",
-          `<i class="bi bi-geo-alt-fill text-success"></i> GPS Activo (±${Math.round(pos.coords.accuracy)}m)`,
-          "bg-success-subtle text-success border border-success-subtle"
-      );
-
-      btnPrincipal.disabled = false;
-btnPrincipal.className = "btn btn-primary w-100 shadow";
-btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
-  } else if (estadoUI === "gps" || (estadoUI === "inicial" && coordsActuales)) {  
+actualizarUI(  
+            "gps",  
+            `<i class="bi bi-geo-alt-fill text-success"></i> GPS Activo (±${Math.round(pos.coords.accuracy)}m)`,  
+            "bg-success-subtle text-success border border-success-subtle"  
+        );  
+        // Activamos el botón en este preciso milisegundo  
+        btnPrincipal.disabled = false;  
+        btnPrincipal.className = "btn btn-primary w-100 shadow";  
+        btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`; 
+        btnPrincipal.onclick = () => document.getElementById('cameraInput').click(); 
+    }   
+    // Si la app ya está en modo GPS normal, solo actualizamos el texto  
+    else if (estadoUI === "gps" || (estadoUI === "inicial" && coordsActuales)) {  
         actualizarUI(  
             "gps",  
             `<i class="bi bi-geo-alt-fill text-success"></i> GPS Activo (±${Math.round(pos.coords.accuracy)}m)`,  
@@ -244,15 +230,13 @@ btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICA
         );  
     }  
         }, (error) => {  
-coordsActuales = null;
-// Solo mostrar error en Android
-if (!esIOS) {
-  actualizarUI(
+coordsActuales = null;  
+// Usamos el estado "error" para que el controlador de UI sepa qué hacer  
+actualizarUI(  
     "error",   
     `<i class="bi bi-geo-off"></i> Error: Activa tu ubicación`,   
-    "bg-danger-subtle text-danger border border-danger-subtle"
-  );
-}
+    "bg-danger-subtle text-danger border border-danger-subtle"  
+);  
 btnPrincipal.disabled = true;  
 btnPrincipal.innerHTML = `Esperando GPS...`;  
 console.warn("Error de Geolocalización:", error.message);
@@ -265,25 +249,39 @@ statusTxt.innerText = "GPS no soportado en este navegador";
 }
 }
 
-// Inicializar servicios
 if (esIOS) {
-  // Modo iPhone → esperar interacción real
-  btnPrincipal.disabled = false;
-  btnPrincipal.innerHTML = "Activar sensores y ubicación";
-  btnPrincipal.addEventListener("click", () => {
-  if (estadoUI === "inicial") {
-    btnPrincipal.disabled = true;
-    btnPrincipal.innerHTML = "Activando...";
+    // En iOS, el botón debe pedir el permiso primero
+    btnPrincipal.disabled = false;
+    btnPrincipal.innerHTML = `<i class="bi bi-shield-lock"></i> ACTIVAR SENSORES`;
+    
+    // Sobrescribimos el click para pedir permisos
+    btnPrincipal.onclick = async () => {
+        try {
+            // Solicitar permiso de movimiento (Obligatorio en iOS)
+            if (typeof DeviceMotionEvent.requestPermission === 'function') {
+                const permiso = await DeviceMotionEvent.requestPermission();
+                if (permiso === 'granted') {
+                    iniciarEscuchaMovimiento(); // Activa acelerómetro
+                    activarGPS();               // Activa ubicación
+                    btnPrincipal.innerHTML = "Esperando Agite...";
+                    btnPrincipal.disabled = true;
+                    // Restauramos el click original para el futuro
+                    btnPrincipal.onclick = () => document.getElementById('cameraInput').click();
+                } else {
+                    alert("Permiso de sensores denegado.");
+                }
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Error al activar sensores.");
+        }
+    };
+} else {
+    // Android: Activa todo automáticamente
     activarGPS();
     activarSensores();
-  }
-});
-
-} else {
-  // Android (sin cambios)
-  activarGPS();
-  activarSensores();
 }
+
 
 // --- 3. VALIDACIÓN DE INTEGRIDAD ---
 async function checarIntegridadHardware() {
@@ -321,7 +319,7 @@ return;
 }
 
 // VALIDACIÓN INSTANTÁNEA  
-if (!coordsActuales && !esIOS) {  
+if (!coordsActuales) {  
     statusTxt.innerHTML = `<i class="bi bi-geo-off text-danger"></i> Error: Activa tu ubicación`;  
     statusTxt.className = "status-box bg-danger-subtle text-danger border border-danger-subtle";  
     btnPrincipal.disabled = true;  
@@ -329,19 +327,9 @@ if (!coordsActuales && !esIOS) {
     e.target.value = "";  
     return;  
 }  
-if (!coordsActuales && esIOS) {
-  actualizarUI(
-    "esperando",
-    "⌛ Esperando señal GPS...",
-    "bg-warning-subtle text-warning border border-warning-subtle"
-  );
-  e.target.value = "";
-  return;
-}
-// Definimos la señal reciente aquí adentro
-const señalGpsReciente = coordsActuales 
-  ? (Date.now() - coordsActuales.timestamp < 10000)
-  : false;
+
+// Definimos la señal reciente aquí adentro  
+const señalGpsReciente = (Date.now() - coordsActuales.timestamp < 10000); // 10 segundos de margen  
 
 if (!señalGpsReciente) {  
     alert("❌ SEÑAL GPS ANTIGUA: Espera un momento a que se actualice.");  
@@ -438,58 +426,24 @@ analizando = false; // Aseguramos que el semáforo se libere
 metricaFlatness = 0;  
 metricaEnergia = 0;  
 metricaVariacionG = 0;
-gpsEsReciente = false;
-tiempoLecturaConcluido = false;
+
 // Al final del try en cameraInput:
 actualizarUI(
-  "exito",
-  `<div style="display:flex; flex-direction:column; align-items:center; gap:6px;">
-     
-     <div style="display:flex; align-items:center; gap:6px;">
-       <i class="bi bi-patch-check"></i>
-       <span style="font-weight:600;">FOTO CERTIFICADA</span>
-     </div>
-
-     <div id="copyContainer" 
-          style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-       
-       <code class="fs-5 text-white" style="font-weight:bold; letter-spacing:1px;">
-         ${folio}
-       </code>
-
-       <i class="bi bi-clipboard" id="copyIcon" style="font-size:1.2rem;"></i>
-     </div>
-
-   </div>`,
-  "bg-success text-white px-2 shadow-sm"
+"exito",
+`✅ CERTIFICADA <br><code class="fs-5 text-white">${folio}</code>`,
+"bg-success text-white px-2 shadow-sm"
 );
-setTimeout(() => {
-  const container = document.getElementById("copyContainer");
-  const icon = document.getElementById("copyIcon");
-
-  if (container) {
-    container.addEventListener("click", async () => {
-      try {
-        await navigator.clipboard.writeText(folio);
-
-        // Feedback visual
-        icon.className = "bi bi-check-lg";
-
-        setTimeout(() => {
-          icon.className = "bi bi-clipboard";
-        }, 1500);
-
-      } catch (err) {
-        alert("❌ No se pudo copiar");
-      }
-    });
-  }
-}, 100);
 
 btnPrincipal.disabled = false;
 btnPrincipal.style.backgroundColor = "#0d6efd"; // El azul original de tu botón
 btnPrincipal.style.borderColor = "#0d6efd";
-btnPrincipal.innerHTML = `FINALIZAR`; 
+btnPrincipal.innerHTML = `<i class="bi bi-check-circle-fill me-2"></i> FINALIZAR`;
+
+
+
+// Cambiamos el comportamiento del botón para que reinicie la app
+btnPrincipal.onclick = () => { window.location.reload(); };
+
 } catch (error) {
 if (error.message.includes("LÍMITE")) {
 alert(error.message);
