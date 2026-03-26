@@ -197,56 +197,77 @@ analizando = false;
 
 // --- 2. GPS ACTUALIZADO (FIJA EL ERROR DE CARGA) ---
 function activarGPS() {
-if ("geolocation" in navigator) {
-navigator.geolocation.watchPosition(
-(pos) => {
-coordsActuales = {
-latitude: pos.coords.latitude,
-longitude: pos.coords.longitude,
-accuracy: pos.coords.accuracy,
-timestamp: Date.now()
-};
-if (tiempoLecturaConcluido && !gpsEsReciente) {
-gpsEsReciente = true; // Bloqueamos para que solo ejecute esto una vez
-estadoUI = "gps";
+  if (!("geolocation" in navigator)) {
+    statusTxt.innerText = "GPS no soportado";
+    return;
+  }
 
-actualizarUI(  
-            "gps",  
-            `<i class="bi bi-geo-alt-fill text-success"></i> GPS Activo (±${Math.round(pos.coords.accuracy)}m)`,  
-            "bg-success-subtle text-success border border-success-subtle"  
-        );  
-        // Activamos el botón en este preciso milisegundo  
-        btnPrincipal.disabled = false;  
-        btnPrincipal.className = "btn btn-primary w-100 shadow";  
-        btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`; 
-        btnPrincipal.onclick = () => document.getElementById('cameraInput').click(); 
-    }   
-    // Si la app ya está en modo GPS normal, solo actualizamos el texto  
-    else if (estadoUI === "gps" || (estadoUI === "inicial" && coordsActuales)) {  
-        actualizarUI(  
-            "gps",  
-            `<i class="bi bi-geo-alt-fill text-success"></i> GPS Activo (±${Math.round(pos.coords.accuracy)}m)`,  
-            "bg-success-subtle text-success border border-success-subtle"  
-        );  
-    }  
-        }, (error) => {  
-coordsActuales = null;  
-// Usamos el estado "error" para que el controlador de UI sepa qué hacer  
-actualizarUI(  
-    "error",   
-    `<i class="bi bi-geo-off"></i> Error: Activa tu ubicación`,   
-    "bg-danger-subtle text-danger border border-danger-subtle"  
-);  
-btnPrincipal.disabled = true;  
-btnPrincipal.innerHTML = `Esperando GPS...`;  
-console.warn("Error de Geolocalización:", error.message);
+  // 🔥 PASO 1: FORZAR PERMISO (CLAVE PARA iOS)
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      // Guardamos primera posición
+      coordsActuales = {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        timestamp: Date.now()
+      };
 
-},
-{ enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-);
-} else {
-statusTxt.innerText = "GPS no soportado en este navegador";
+      // 🔥 PASO 2: INICIAR TRACKING CONTINUO
+      iniciarWatchGPS();
+    },
+    (error) => {
+      coordsActuales = null;
+
+      actualizarUI(
+        "error",
+        `<i class="bi bi-geo-off"></i> Permiso de ubicación denegado`,
+        "bg-danger-subtle text-danger border border-danger-subtle"
+      );
+
+      btnPrincipal.disabled = true;
+      btnPrincipal.innerHTML = "Permiso GPS requerido";
+
+      console.warn("Error GPS:", error.message);
+    },
+    { enableHighAccuracy: true, timeout: 15000 }
+  );
 }
+
+function iniciarWatchGPS() {
+  navigator.geolocation.watchPosition(
+    (pos) => {
+      coordsActuales = {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: pos.coords.accuracy,
+        timestamp: Date.now()
+      };
+
+      if (tiempoLecturaConcluido && !gpsEsReciente) {
+        gpsEsReciente = true;
+        estadoUI = "gps";
+
+        actualizarUI(
+          "gps",
+          `<i class="bi bi-geo-alt-fill text-success"></i> GPS Activo (±${Math.round(pos.coords.accuracy)}m)`,
+          "bg-success-subtle text-success border border-success-subtle"
+        );
+
+        btnPrincipal.disabled = false;
+        btnPrincipal.className = "btn btn-primary w-100 shadow";
+        btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
+
+        btnPrincipal.onclick = () =>
+          document.getElementById('cameraInput').click();
+      }
+
+    },
+    (error) => {
+      console.warn("Error watch GPS:", error.message);
+    },
+    { enableHighAccuracy: true, maximumAge: 0 }
+  );
 }
 
 if (esIOS) {
@@ -430,7 +451,7 @@ metricaVariacionG = 0;
 // Al final del try en cameraInput:
 actualizarUI(
 "exito",
-`✅ CERTIFICADA <br><code class="fs-5 text-white">${folio}</code>`,
+`FOTO CERTIFICADA <br><code class="fs-5 text-white">${folio}</code>`,
 "bg-success text-white px-2 shadow-sm"
 );
 
