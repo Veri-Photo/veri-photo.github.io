@@ -25,6 +25,22 @@ const esIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 let intentosMemoria = JSON.parse(localStorage.getItem("vp_intentos")) || [];
 let certificacionesMemoria = JSON.parse(localStorage.getItem("vp_certs")) || [];
 
+function verificarCompatibilidadModelo() {
+    const isIPhone = /iPhone/i.test(navigator.userAgent);
+    const height = window.screen.height;
+    const width = window.screen.width;
+    const pr = window.devicePixelRatio;
+
+    // Detecta iPhone X, XS, 11 Pro (Pequeño)
+    const esModeloLimitado = isIPhone && (height === 812 || width === 812) && pr === 3;
+    
+    if (esModeloLimitado) {
+        alert("ADVERTENCIA DE COMPATIBILIDAD:\n\nEs posible que su dispositivo no sea totalmente compatible con los sistemas de verificación de VeriPhoto. Si experimenta errores, asegúrese de usar un iPhone 11 o superior.");
+    }
+}
+
+verificarCompatibilidadModelo();
+
 function guardarDatos() {
 localStorage.setItem("vp_intentos", JSON.stringify(intentosMemoria));
 localStorage.setItem("vp_certs", JSON.stringify(certificacionesMemoria));
@@ -524,106 +540,45 @@ statusTxt.innerHTML = mensaje;
 // Hacer la función accesible desde el HTML (necesario para módulos)
 window.activarSensores = activarSensores;
 
-// --- INICIALIZACIÓN (ÚLTIMO BLOQUE DEL ARCHIVO) ---
+// --- INICIALIZACIÓN UNIFICADA Y SEGURA (2 CLICS PARA iOS) ---
 if (esIOS) {
-    // iOS: Pasos secuenciales para permisos
-    let pasoActual = 1;
+    let pasoPermisos = 1; // Control de flujo interno
     
     btnPrincipal.disabled = false;
-    btnPrincipal.innerHTML = `<i class="bi bi-shield-lock"></i> PASO 1: ACTIVAR SENSORES`;
+    btnPrincipal.innerHTML = `<i class="bi bi-shield-lock"></i> PASO 1: SENSORES`;
     
     btnPrincipal.onclick = async () => {
-        if (pasoActual === 1) {
-            // PASO 1: Sensores
+        // --- PASO 1: SENSORES ---
+        if (pasoPermisos === 1) {
             if (typeof DeviceMotionEvent.requestPermission === 'function') {
                 try {
-                    const permisoSensor = await DeviceMotionEvent.requestPermission();
-                    
-                    if (permisoSensor === 'granted') {
-                        iniciarEscuchaMovimiento();
+                    const permiso = await DeviceMotionEvent.requestPermission();
+                    if (permiso === 'granted') {
+                        iniciarEscuchaMovimiento(); // Activa acelerómetro/giroscopio
                         
-                        // Inmediatamente solicitar GPS (mismo contexto de clic)
-                        statusTxt.innerHTML = `<i class="bi bi-gear-wide-connected"></i> Sensores OK. Buscando ubicación...`;
-                        btnPrincipal.disabled = true;
-                        
-                        navigator.geolocation.getCurrentPosition(
-                            (pos) => {
-                                coordsActuales = {
-                                    latitude: pos.coords.latitude,
-                                    longitude: pos.coords.longitude,
-                                    accuracy: pos.coords.accuracy,
-                                    timestamp: Date.now()
-                                };
-                                
-                                pasoActual = 3;
-                                btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
-                                btnPrincipal.disabled = false;
-                                activarGPS();
-                                btnPrincipal.onclick = () => document.getElementById('cameraInput').click();
-                                statusTxt.innerHTML = `<i class="bi bi-shield-check text-success"></i> Listo para capturar`;
-                                statusTxt.className = "status-box bg-success-subtle text-success border border-success-subtle";
-                            },
-                            (error) => {
-                                console.error("GPS Error:", error.code, error.message);
-                                if (error.code === error.PERMISSION_DENIED) {
-                                    alert("Permiso de ubicación denegado. Verifica Ajustes > Safari > Ubicación.");
-                                    pasoActual = 1;
-                                    btnPrincipal.innerHTML = `<i class="bi bi-exclamation-triangle"></i> REVISAR PERMISOS`;
-                                } else {
-                                    alert("Error de ubicación. Reintentar?");
-                                    pasoActual = 2;
-                                    btnPrincipal.innerHTML = `<i class="bi bi-geo-alt-fill"></i> REINTENTAR GPS`;
-                                }
-                            },
-                            { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
-                        );
-                    } else {
-                        alert("Permiso de sensores denegado.");
-                        pasoActual = 1;
-                        btnPrincipal.innerHTML = `<i class="bi bi-shield-lock"></i> REINTENTAR SENSORES`;
+                        // Preparamos la UI para el segundo clic obligatorio
+                        pasoPermisos = 2;
+                        btnPrincipal.innerHTML = `<i class="bi bi-geo-alt"></i> PASO 2: UBICACIÓN`;
+                        statusTxt.innerHTML = `<i class="bi bi-check-circle text-success"></i> Sensores OK.`;
                     }
-                } catch (e) {
-                    console.error(e);
-                    alert("Error en sensores.");
-                    pasoActual = 1;
-                    btnPrincipal.innerHTML = `<i class="bi bi-shield-lock"></i> REINTENTAR SENSORES`;
-                }
-            } else {
-                // Fallback iOS antiguo
-                iniciarEscuchaMovimiento();
-                activarGPS();
-                btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
-                btnPrincipal.onclick = () => document.getElementById('cameraInput').click();
+                } catch (e) { alert("Error en sensores"); }
             }
-        } else if (pasoActual === 2) {
-            // REINTENTO GPS
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    coordsActuales = {
-                        latitude: pos.coords.latitude,
-                        longitude: pos.coords.longitude,
-                        accuracy: pos.coords.accuracy,
-                        timestamp: Date.now()
-                    };
-                    pasoActual = 3;
-                    btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
-                    btnPrincipal.disabled = false;
-                    activarGPS();
-                    btnPrincipal.onclick = () => document.getElementById('cameraInput').click();
-                    statusTxt.innerHTML = `<i class="bi bi-shield-check text-success"></i> Listo para capturar`;
-                    statusTxt.className = "status-box bg-success-subtle text-success border border-success-subtle";
-                },
-                (error) => {
-                    alert("No se pudo obtener ubicación. Verifica GPS.");
-                    btnPrincipal.innerHTML = `<i class="bi bi-exclamation-triangle"></i> ERROR`;
-                    btnPrincipal.disabled = true;
-                },
-                { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
-            );
+        } 
+        // --- PASO 2: UBICACIÓN ---
+        else if (pasoPermisos === 2) {
+            // Este segundo clic "limpia" la intención para el GPS
+            btnPrincipal.disabled = true;
+            btnPrincipal.innerHTML = `<span class="spinner-border spinner-border-sm"></span> BUSCANDO GPS...`;
+            
+            // Llamamos a tu función global que ya tiene watchPosition
+            activarGPS(); 
+            
+            // Nota: activarGPS() se encargará de habilitar el botón de "CAPTURA" 
+            // y cambiar el onclick a la cámara cuando reciba la señal.
         }
     };
 } else {
-    // ANDROID: Sin cambios (tu código original funciona)
+    // ANDROID: Sin restricciones, activamos todo de golpe
     activarGPS();
     activarSensores();
 }
