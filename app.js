@@ -3,6 +3,21 @@ document.body.innerHTML = "<h1>Acceso Bloqueado</h1><p>Esta aplicación no puede
 throw new Error("Intento de ejecución en iframe detectado.");
 }
 
+function obtenerDeviceId() {
+    let deviceId = localStorage.getItem("vp_device_id") 
+        || sessionStorage.getItem("vp_device_id");
+
+    if (!deviceId) {
+        deviceId = crypto.randomUUID();
+    }
+
+    // Persistir en ambos
+    localStorage.setItem("vp_device_id", deviceId);
+    sessionStorage.setItem("vp_device_id", deviceId);
+
+    return deviceId;
+}
+
 const esIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 function verificarCompatibilidadModelo() {
@@ -263,6 +278,8 @@ const hash = Array.from(new Uint8Array(hashBuffer))
     .map(b => b.toString(16).padStart(2, "0"))
     .join("");
     
+const deviceId = obtenerDeviceId();
+
 const validationUrl = "https://veriphoto-guardia.vercel.app/api/validate";
 
 const response = await fetch(validationUrl, {
@@ -285,7 +302,8 @@ const response = await fetch(validationUrl, {
             energia_dinamica: metricaEnergia,
             variacion_giroscopio: metricaVariacionG,
             muestras_analizadas: 64,
-            intervalo_ms: 20
+            intervalo_ms: 20,
+            deviceId,
         }
     })
 });
