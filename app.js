@@ -362,30 +362,67 @@ const response = await fetch(validationUrl, {
     btnPrincipal.onclick = () => { window.location.reload(); };
 
 } catch (error) {
-if (error.message.includes("LÍMITE")) {
-alert(error.message);
-statusTxt.innerHTML = `<i class="bi bi-clock-history"></i> ${error.message}`;
-statusTxt.className = "status-box bg-warning text-dark";
-}
+    console.error("Error detectado:", error);
 
-if (error.message.includes("Sensores inactivos")) {
-alert("❌ ERROR: VeriPhoto necesita acceso a los sensores de movimiento.");
-statusTxt.innerHTML = `<i class="bi bi-shield-slash text-danger"></i> Permiso denegado`;
-statusTxt.className = "status-box bg-danger-subtle text-danger border border-danger-subtle";
-} else if (!coordsActuales) {
-statusTxt.innerHTML = `<i class="bi bi-geo-off text-danger"></i> Error: Ubicación perdida`;
-statusTxt.className = "status-box bg-danger-subtle text-danger border border-danger-subtle";
-} else {
-alert(`❌ ERROR DE SEGURIDAD:\n${error.message}`);
-statusTxt.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> Error de integridad`;
-statusTxt.className = "status-box bg-warning-subtle text-warning border border-warning-subtle";
-}
-    btnPrincipal.disabled = true; 
-    btnPrincipal.innerHTML = `<i class="bi bi-arrow-clockwise"></i> Reiniciando...`;  
-    e.target.value = "";   
-    setTimeout(() => {  
-        mostrandoExito = false;  
-    }, 1000);  
+    // 1. CASO: LÍMITE DE TIEMPO (Cuenta regresiva)
+    if (error.message.includes("Límite") || error.message.includes("429")) {
+        // Intentamos obtener los segundos exactos del error (si el server los manda)
+        // Si no los encuentra, por defecto usará 60
+        let segundosFaltantes = parseInt(error.message.match(/\d+/)) || 60;
+        
+        statusTxt.innerHTML = `<i class="bi bi-clock-history"></i> ${error.message}`;
+        statusTxt.className = "status-box bg-warning text-dark";
+
+        // Función interna para la cuenta regresiva en el botón
+        let restante = segundosFaltantes;
+        btnPrincipal.disabled = true;
+        
+        const cuentaRegresiva = setInterval(() => {
+            if (restante <= 0) {
+                clearInterval(cuentaRegresiva);
+                btnPrincipal.disabled = false;
+                btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
+                statusTxt.innerHTML = `<i class="bi bi-shield-check text-success"></i> Listo para reintentar`;
+                statusTxt.className = "status-box bg-success-subtle text-success";
+            } else {
+                btnPrincipal.innerHTML = `<i class="bi bi-hourglass-split"></i> ESPERA ${restante}s...`;
+                restante--;
+            }
+        }, 1000);
+
+    // 2. CASO: SENSORES
+    } else if (error.message.includes("Sensores inactivos")) {
+        alert("❌ ERROR: VeriPhoto necesita acceso a los sensores de movimiento.");
+        statusTxt.innerHTML = `<i class="bi bi-shield-slash text-danger"></i> Permiso denegado`;
+        statusTxt.className = "status-box bg-danger-subtle text-danger border border-danger-subtle";
+        prepararReintentoRapido();
+
+    // 3. CASO: GPS
+    } else if (!coordsActuales) {
+        statusTxt.innerHTML = `<i class="bi bi-geo-off text-danger"></i> Error: Ubicación perdida`;
+        statusTxt.className = "status-box bg-danger-subtle text-danger border border-danger-subtle";
+        prepararReintentoRapido();
+
+    // 4. OTROS ERRORES (Integridad, etc)
+    } else {
+        alert(`❌ ERROR DE SEGURIDAD:\n${error.message}`);
+        statusTxt.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> Error de integridad`;
+        statusTxt.className = "status-box bg-warning-subtle text-warning border border-warning-subtle";
+        prepararReintentoRapido();
+    }
+
+    // Función auxiliar para no repetir código en errores comunes
+    function prepararReintentoRapido() {
+        btnPrincipal.disabled = true;
+        btnPrincipal.innerHTML = `<i class="bi bi-arrow-clockwise"></i> Reiniciando...`;
+        setTimeout(() => {
+            btnPrincipal.disabled = false;
+            btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
+            mostrandoExito = false;
+        }, 3000);
+    }
+
+    e.target.value = ""; // Limpiar el input de cámara
 }
 }); 
 
