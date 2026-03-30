@@ -394,11 +394,18 @@ toast.show();
         const cuentaRegresiva = setInterval(() => {
             if (restante <= 0) {
                 clearInterval(cuentaRegresiva);
+                
                 btnPrincipal.disabled = false;
-                setTimeout(() => {
-                  btnPrincipal.blur();
-                }, 50);
-                btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
+    
+    // 2. RESET VISUAL: Quitamos la clase y la ponemos de inmediato
+    // Esto obliga al navegador a redibujar el botón desde cero (sin foco)
+    btnPrincipal.classList.remove('btn-primary');
+    void btnPrincipal.offsetWidth; // Truco de "reflow" para forzar el reinicio
+    btnPrincipal.classList.add('btn-primary');
+
+    // 3. El blur por si acaso
+    btnPrincipal.blur();
+                btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAAPTURAR Y CERTIFICAR`;
             } else {
                 btnPrincipal.innerHTML = `<i class="bi bi-hourglass-split"></i> ESPERA ${restante}s...`;
                 restante--;
