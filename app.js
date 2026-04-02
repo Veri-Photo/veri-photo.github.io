@@ -64,6 +64,7 @@ let estadoUI = "inicial";
 let tiempoLecturaConcluido = false;
 let gpsEsReciente = false;
 let watchId = null; 
+let intervaloGuardia = null; 
 
 const statusTxt = document.getElementById("status");
 const btnPrincipal = document.getElementById("btnPrincipal");
@@ -179,6 +180,8 @@ function activarGPS() {
 if ("geolocation" in navigator) {
 watchId = navigator.geolocation.watchPosition(
 (pos) => {
+       
+    if (estadoUI === "exito") return; 
     const precision = pos.coords.accuracy;
     coordsActuales = {
         latitude: pos.coords.latitude,
@@ -187,10 +190,9 @@ watchId = navigator.geolocation.watchPosition(
         timestamp: Date.now()
     };
 
-    // 1. SI LA PRECISIÓN ES MALA (> 30m)
-    if (precision > 30) {
+    if (precision > 10) {
         gpsEsReciente = false;
-        btnPrincipal.disabled = true; // Bloqueo de seguridad
+        btnPrincipal.disabled = true; 
         btnPrincipal.innerHTML = `<i class="bi bi-geo-fill"></i> BUSCANDO PRECISIÓN...`;
         
         actualizarUI(
@@ -202,18 +204,15 @@ watchId = navigator.geolocation.watchPosition(
         if (!window.avisoGpsDebil) {
             window.avisoGpsDebil = true;
         }
-        return; // Detenemos aquí: No dejamos que pase a los siguientes estados
+        return; 
     }
 
-    // 2. SI LA PRECISIÓN ES BUENA (< 30m)
     window.avisoGpsDebil = false;
     
     if (!verificadoPorAgite) {
         btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
-        // Mantenemos btnPrincipal.disabled = true; porque falta el agite
     }
 
-    // Lógica para Android y para el Paso Final de iPhone
     if (tiempoLecturaConcluido && !gpsEsReciente) {
         gpsEsReciente = true; 
         estadoUI = "gps";
@@ -229,7 +228,6 @@ watchId = navigator.geolocation.watchPosition(
         btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`; 
         btnPrincipal.onclick = () => document.getElementById('cameraInput').click(); 
     } else {
-        // Mantenemos la UI actualizada con la precisión actual aunque no esté listo el agite
         actualizarUI(  
             "gps",  
             `<i class="bi bi-geo-alt-fill text-success"></i> GPS Activo (±${Math.round(precision)}m)`,  
@@ -240,33 +238,29 @@ watchId = navigator.geolocation.watchPosition(
     coordsActuales = null;  
     actualizarUI(  
         "error",   
-        `<i class="bi bi-geo-off"></i> Error: Activa tu ubicación`,   
+        `Ubicación desactivada. <br>Verifica tu conexión.`,
         "bg-danger-subtle text-danger border border-danger-subtle"  
     );  
     btnPrincipal.disabled = true;  
-    btnPrincipal.innerHTML = `<span class="spinner-border spinner-border-sm"></span> Esperando GPS...`;  
+    btnPrincipal.innerHTML = `<i class="bi bi-geo-fill"></i> GPS REQUERIDO`;
     
     console.warn("Error de Geolocalización:", error.message);
 
-    // Lógica de reintento automático (Segura para Safari y Android)
     if (!window.reintentandoGPS) {
         window.reintentandoGPS = true;
         const intervaloReintento = setInterval(() => {
-            // Intentamos una lectura rápida para ver si ya activaron el GPS
             navigator.geolocation.getCurrentPosition(
                 () => {
-                    // ¡Éxito! El GPS ya está encendido
                     clearInterval(intervaloReintento);
                     window.reintentandoGPS = false;
-                    activarGPS(); // Reinicia el watchPosition normal
+                    activarGPS(); 
                 },
                 () => {
-                    // Sigue apagado, no hacemos nada y esperamos al siguiente ciclo
                     console.log("GPS sigue desactivado...");
                 },
                 { enableHighAccuracy: true, timeout: 1500 }
             );
-        }, 2000); // Reintenta cada 2 segundos
+        }, 2000); 
     }
 },
 { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
@@ -294,22 +288,29 @@ document.getElementById("cameraInput").addEventListener("change", async (e) => {
 const file = e.target.files[0];
 if (!file) return;
 
+mostrandoExito = true; 
+
 if (!coordsActuales) {  
-    statusTxt.innerHTML = `<i class="bi bi-geo-off text-danger"></i> Error: Activa tu ubicación`;  
-    statusTxt.className = "status-box bg-danger-subtle text-danger border border-danger-subtle";  
-    btnPrincipal.disabled = true;  
-    btnPrincipal.innerHTML = `Esperando GPS...`;  
-    e.target.value = "";  
-    return;  
+  statusTxt.innerHTML = `Ubicación desactivada. <br>Verifica tu conexión.`,
+  statusTxt.className = "status-box bg-danger-subtle text-danger border border-danger-subtle";  
+  btnPrincipal.disabled = true;  
+  btnPrincipal.innerHTML = `<i class="bi bi-geo-fill"></i> GPS REQUERIDO`;  
+  e.target.value = "";  
+  mostrandoExito = false; 
+  iniciarGuardiaGPS();
+  return;  
 }  
 
 const señalGpsReciente = (Date.now() - coordsActuales.timestamp < 10000);
 
 if (!señalGpsReciente) {
-    mostrarNotificacion("SEÑAL GPS ANTIGUA.<br><br>Espera un momento a que se actualice.", "danger");
-    e.target.value = "";  
-    return;   
-}  
+  mostrarNotificacion("SEÑAL GPS ANTIGUA.<br><br>Espera un momento a que se actualice.", "danger");
+  e.target.value = "";  
+  mostrandoExito = false;
+  iniciarGuardiaGPS();
+  return;   
+}
+    
 btnPrincipal.disabled = true;  
 btnPrincipal.innerHTML = `<span class="spinner-border spinner-border-sm"></span> VALIDANDO...`;  
 
@@ -328,7 +329,9 @@ try {
     if (desfaseTiempo > 10) {
         throw new Error("FRAUDE TEMPORAL: La foto no es reciente.");
     }
-    statusTxt.innerText = "Sellando evidencia...";
+    
+actualizarUI("procesando", "Sellando evidencia...", "bg-info-subtle text-info border border-info-subtle");
+
     const fotoBase64 = await procesarImagen(file);
 
 const challengeRes = await fetch("https://veriphoto-guardia.vercel.app/api/challenge");
@@ -378,21 +381,15 @@ const response = await fetch(validationUrl, {
         }
     })
 });
-// 1. LEEMOS EL JSON DE LA RESPUESTA (Solo una vez)
+
 const result = await response.json();
 
-// 2. SI EL SERVIDOR RESPONDIÓ CON ERROR (429 de límite, etc.)
 if (!response.ok) {
-    // IMPORTANTE: Lanzamos el objeto completo como texto para el catch
     throw new Error(JSON.stringify(result));
 }
     console.log("✅ Éxito! Folio:", result.folio);
     
     detenerTodoElSistema();
-    
-    btnPrincipal.innerHTML = `<i class="bi bi-shield-check"></i> GUARDADO CON ÉXITO`;
-    statusTxt.innerText = "Certificación completada correctamente";
-    statusTxt.className = "status-box bg-success-subtle text-success border border-success-subtle";
 
     actualizarUI(
         "exito",
@@ -438,17 +435,19 @@ if (!response.ok) {
 
 } catch (error) {
     console.error("Error:", error);
+    
+    mostrandoExito = false; 
+    estadoUI = "inicial"; 
+    iniciarGuardiaGPS(); 
 
     let mensajeError = error.message;
-    let segundosFaltantes = 60; // Por defecto si algo falla
-
-    // Intentamos extraer los datos del JSON que enviamos en el throw
+    let segundosFaltantes = 60; 
     try {
         const objetoError = JSON.parse(error.message);
-        mensajeError = objetoError.error; // "Límite alcanzado"
-        segundosFaltantes = objetoError.segundos; // El número exacto (ej. 24)
+        mensajeError = objetoError.error; 
+        segundosFaltantes = objetoError.segundos; 
     } catch (e) {
-        // Si no es un JSON, el mensaje se queda como estaba
+
     }
 
     if (mensajeError.includes("Límite") || mensajeError.includes("Actividad")) {
@@ -459,35 +458,30 @@ if (!response.ok) {
         btnPrincipal.disabled = true;
 
         const cuentaRegresiva = setInterval(() => {
-            if (restante <= 0) {
-                clearInterval(cuentaRegresiva);
-                
-                btnPrincipal.disabled = false;
-                setTimeout(() => {
-        btnPrincipal.blur();
-        window.focus(); // Esto le quita el foco al botón y se lo da a la ventana
-    }, 1000);
-                btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
-            } else {
-                btnPrincipal.innerHTML = `<i class="bi bi-hourglass-split"></i> ESPERA ${restante}s...`;
-                restante--;
-            }
-        }, 1000);
+    if (restante <= 0) {
+        clearInterval(cuentaRegresiva);
+        
+        if (coordsActuales && (Date.now() - coordsActuales.timestamp < 10000)) {
+            btnPrincipal.disabled = false;
+            btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
+        }
+    } else {
+        btnPrincipal.innerHTML = `<i class="bi bi-hourglass-split"></i> ESPERA ${restante}s...`;
+        restante--;
+    }
+}, 1000);
 
-    // 2. CASO: SENSORES
     } else if (error.message.includes("Sensores inactivos")) {
         mostrarNotificacion("ERROR:<br><br>Se necesita acceso a los sensores de movimiento.", "danger");
         statusTxt.innerHTML = `<i class="bi bi-shield-slash text-danger"></i> Permiso denegado`;
         statusTxt.className = "status-box bg-danger-subtle text-danger border border-danger-subtle";
         prepararReintentoRapido();
 
-    // 3. CASO: GPS
     } else if (!coordsActuales) {
-        statusTxt.innerHTML = `<i class="bi bi-geo-off text-danger"></i> Error: Ubicación perdida`;
+        statusTxt.innerHTML = `Ubicación desactivada. <br>Verifica tu conexión.`,
         statusTxt.className = "status-box bg-danger-subtle text-danger border border-danger-subtle";
         prepararReintentoRapido();
 
-    // 4. OTROS ERRORES (Integridad, etc)
     } else {
         mostrarNotificacion(`ERROR DE SEGURIDAD:<br><br>${error.message}`, "danger");
         statusTxt.innerHTML = `<i class="bi bi-exclamation-triangle-fill"></i> Error de integridad`;
@@ -495,18 +489,22 @@ if (!response.ok) {
         prepararReintentoRapido();
     }
 
-    // Función auxiliar para no repetir código en errores comunes
     function prepararReintentoRapido() {
-        btnPrincipal.disabled = true;
-        btnPrincipal.innerHTML = `<i class="bi bi-arrow-clockwise"></i> Reiniciando...`;
-        setTimeout(() => {
-            btnPrincipal.disabled = false;
-            btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
-            mostrandoExito = false;
-        }, 3000);
-    }
 
-    e.target.value = ""; // Limpiar el input de cámara
+    btnPrincipal.disabled = true;
+    btnPrincipal.innerHTML = `<i class="bi bi-arrow-clockwise"></i> Reiniciando...`;
+
+    setTimeout(() => {
+        mostrandoExito = false; 
+        
+        iniciarGuardiaGPS();
+
+        btnPrincipal.disabled = false;
+        btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
+    }, 3000);
+}
+
+    e.target.value = ""; 
 }
 }); 
 
@@ -544,50 +542,44 @@ resolve(canvas.toDataURL('image/jpeg', 0.7));
 }
 
 function actualizarUI(nuevoEstado, mensaje, clase) {
-    // 1. PRIORIDAD ABSOLUTA: Si ya tuvimos éxito, NADIE más toca la pantalla.
-    // Este es el "muro" que evitará que el GPS débil borre tu folio.
-    if (estadoUI === "exito") {
+
+    if (estadoUI === "exito" || (estadoUI === "procesando" && nuevoEstado !== "exito")) {
         return; 
     }
 
-    // 2. Prioridad de Estados finales intermedios
-    const estadosFinales = ["verificado", "procesando"];
+    const estadosFinales = ["verificado", "procesando", "exito"]; 
     if (estadosFinales.includes(estadoUI) && !estadosFinales.includes(nuevoEstado)) {  
         return;   
     }
 
-    // 3. Prioridad de Bloqueo: Si el GPS es malo, PROHIBIMOS cualquier otro mensaje
     if (estadoUI === "gps_debil" && nuevoEstado !== "gps_debil") {
         if (nuevoEstado !== "gps") {
             return; 
         }
     }
 
-    // 4. Prioridad de Instrucción: Si falta el agite, mantenemos ese mensaje
     if (nuevoEstado === "gps" && !verificadoPorAgite && sensorActivo) {
         if (estadoUI === "agitando") {
             return;
         }
     }
 
-    // Aplicar el cambio
     estadoUI = nuevoEstado;  
     statusTxt.className = `status-box ${clase}`;  
     statusTxt.innerHTML = mensaje;
 }
 
 function detenerTodoElSistema() {
-    // 1. Detenemos el GPS
+
     if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
         watchId = null;
     }
-    // 2. Detenemos los reintentos automáticos si existen
+
     if (window.reintentandoGPS) {
         clearInterval(window.reintentandoGPS);
         window.reintentandoGPS = false;
     }
-    // 3. Los sensores ya tienen el 'if (mostrandoExito) return', así que están cubiertos.
 }
 
 window.activarSensores = activarSensores;
@@ -621,6 +613,7 @@ if (esIOS) {
             };
             statusTxt.innerHTML = `<i class="bi bi-geo-alt-fill text-success"></i> GPS Conectado.`;
             activarGPS(); 
+            iniciarGuardiaGPS();
             if (verificadoPorAgite) {
                 pasoPermisos = 3;
                 btnPrincipal.innerHTML = `<i class="bi bi-camera-fill"></i> CAPTURAR Y CERTIFICAR`;
@@ -657,4 +650,43 @@ if (esIOS) {
 } else {
     activarGPS();
     activarSensores();
+    iniciarGuardiaGPS();
+}
+
+function iniciarGuardiaGPS() {
+  
+    if (intervaloGuardia) {
+        clearInterval(intervaloGuardia);
+    }
+
+    intervaloGuardia = setInterval(() => {
+        if (estadoUI === "exito") return;
+
+        if (mostrandoExito) return; 
+
+        const ahora = Date.now();
+
+        if (!coordsActuales) {
+            activarModoErrorGPS("Ubicación desactivada");
+            return;
+        }
+
+        if (ahora - coordsActuales.timestamp > 10000) {
+            activarModoErrorGPS("Señal GPS perdida o congelada");
+            return;
+        }
+    }, 2000);
+}
+
+function activarModoErrorGPS(motivo) {
+    gpsEsReciente = false;
+    
+    btnPrincipal.disabled = true;
+    btnPrincipal.innerHTML = `<i class="bi bi-geo-fill"></i> GPS REQUERIDO`;
+
+    actualizarUI(
+        "gps_debil",
+        `${motivo}. <br>Verifica tu conexión.`,
+        "bg-danger-subtle text-danger border border-danger-subtle"
+    );
 }
