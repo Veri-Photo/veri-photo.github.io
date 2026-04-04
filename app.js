@@ -433,7 +433,7 @@ if (!response.ok) {
     const btnCopiar = document.getElementById("btnCopiarFolio");
     if (btnCopiar) {
         btnCopiar.onclick = () => {
-            navigator.clipboard.writeText(result.folio).then(() => {
+            navigator.clipboard.writeText(result.folioHMAC).then(() => {
                 const icono = btnCopiar.querySelector("i");
                 icono.classList.replace("bi-copy", "bi-check-lg");
                 btnCopiar.classList.replace("btn-outline-light", "btn-success");
