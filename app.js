@@ -426,7 +426,6 @@ if (!response.ok) {
         <code class="fs-5 text-white" id="folioDisplay" style="word-break: break-all;">${result.folioHMAC}</code>
         <button id="btnCopiarFolio" class="btn btn-light btn-sm w-100 d-flex align-items-center justify-content-center gap-2" 
                 style="border-radius: 10px; font-weight: 600; padding: 8px 15px; max-width: 220px;">
-            <i class="bi bi-copy"></i>
             <span>Copiar Folio</span>
         </button>
     </div>`,
@@ -440,12 +439,10 @@ if (btnCopiar) {
             const icono = btnCopiar.querySelector("i");
             const texto = btnCopiar.querySelector("span");
 
-            icono.classList.replace("bi-copy", "bi-check-lg");
             texto.innerText = "¡Copiado!";
             btnCopiar.classList.replace("btn-light", "btn-warning");
 
             setTimeout(() => {
-                icono.classList.replace("bi-check-lg", "bi-copy");
                 texto.innerText = "Copiar Folio";
                 btnCopiar.classList.replace("btn-warning", "btn-light");
                  btnCopiar.blur(); 
