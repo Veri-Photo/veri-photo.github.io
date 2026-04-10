@@ -3,6 +3,17 @@ document.body.innerHTML = "<h1>Acceso Bloqueado</h1><p>Esta aplicación no puede
 throw new Error("Intento de ejecución en iframe detectado.");
 }
 
+const esDispositivoMovil = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+if (!esDispositivoMovil) {
+    document.getElementById('appMobile').classList.add('d-none');
+    const pantallaPC = document.getElementById('pantallaPC');
+    pantallaPC.style.setProperty('display', 'flex', 'important');
+    pantallaPC.classList.remove('d-none');
+    pantallaPC.classList.add('d-flex');
+    throw new Error("Ejecución detenida: Se requiere dispositivo móvil.");
+}
+
 function obtenerDeviceId() {
     let deviceId = localStorage.getItem("vp_device_id") 
         || sessionStorage.getItem("vp_device_id");

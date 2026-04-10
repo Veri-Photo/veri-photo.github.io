@@ -47,43 +47,68 @@
 
 </style>
 </head>  
-<body>  <div class="container">  
-    <div class="row justify-content-center">  
-        <div class="col-11 col-md-6 text-center">  
-            <div class="card p-4">  
-                <h2 class="mb-4 text-primary"><i class="bi bi-shield-check"></i> VeriPhoto</h2>  <div id="status" class="status-box bg-light text-muted">  
-              <div class="spinner-border spinner-border-sm me-2" role="status"></div>  
-Inicializando sistemas de seguridad...
-
-</div>  <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">  
-              
-            <button id="btnPrincipal" class="btn btn-primary w-100 shadow" disabled>  
-              <i class="bi bi-camera-fill me-2"></i> CAPTURAR Y CERTIFICAR</button>  
-                
-            <p class="mt-4 text-secondary small">La evidencia se certificará automáticamente al tomar la foto.</p>  
-        </div>  
-    </div>  
-</div>
-</div>  
-
-<div class="toast-container position-fixed top-0 start-50 translate-middle-x p-3">
-  <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-    
-    <div class="toast-header bg-warning text-dark" id="toastHeader">
-      <strong class="me-auto" id="toastTitle">
-        <i class="bi bi-shield-check"></i> VeriPhoto
-      </strong>
-      <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+<body> 
+    <div id="pantallaPC" class="d-none flex-column align-items-center justify-content-center vh-100 vw-100 bg-white position-fixed top-0 start-0" style="display: none !important; z-index: 9999;">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-11 col-md-5 text-center">
+                <div class="card p-5 border-0 shadow-lg" style="border-radius: 25px;">
+                    <h2 class="mb-4 text-primary"><i class="bi bi-shield-check"></i> VeriPhoto</h2>
+                    <h4 class="text-dark mb-3 fw-bold">Acceso Restringido</h4>
+                    <p class="text-secondary mb-4">
+                        Por motivos de seguridad y para garantizar la integridad de la captura, 
+                        es necesario acceder a esta herramienta desde un dispositivo móvil.
+                    </p>
+                    <div class="mb-4">
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=https://veri-photo.github.io" 
+                             alt="Código QR de VeriPhoto" 
+                             class="img-fluid rounded border p-3 shadow-sm bg-white">
+                    </div>
+                    <p class="text-muted small mb-0">Escanea el código QR con tu celular para ingresar.</p>
+                </div>
+            </div>
+        </div>
     </div>
-    
-    <div class="toast-body" id="toastMsg"></div>
-  </div>
 </div>
 
-<script>  
-    if ('serviceWorker' in navigator) {  
-        navigator.serviceWorker.register('sw.js');  
-    }  
-</script>  <script type="module" src="app.js"></script>  
+    <div id="appMobile" class="container">  
+        <div class="row justify-content-center">  
+            <div class="col-11 col-md-6 text-center">  
+                <div class="card p-4">  
+                    <h2 class="mb-4 text-primary"><i class="bi bi-shield-check"></i> VeriPhoto</h2>  
+                    <div id="status" class="status-box bg-light text-muted">  
+                        <div class="spinner-border spinner-border-sm me-2" role="status"></div>  
+                        Inicializando sistemas de seguridad...
+                    </div>  
+                    <input type="file" id="cameraInput" accept="image/*" capture="environment" style="display: none;">  
+                  
+                    <button id="btnPrincipal" class="btn btn-primary w-100 shadow" disabled>  
+                        <i class="bi bi-camera-fill me-2"></i> CAPTURAR Y CERTIFICAR
+                    </button>  
+                    
+                    <p class="mt-4 text-secondary small">La evidencia se certificará automáticamente al tomar la foto.</p>  
+                </div>  
+            </div>  
+        </div>
+    </div>  
+
+    <div class="toast-container position-fixed top-0 start-50 translate-middle-x p-3">
+        <div id="liveToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header bg-warning text-dark" id="toastHeader">
+                <strong class="me-auto" id="toastTitle">
+                    <i class="bi bi-shield-check"></i> VeriPhoto
+                </strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body" id="toastMsg"></div>
+        </div>
+    </div>
+
+    <script>  
+        if ('serviceWorker' in navigator) {  
+            navigator.serviceWorker.register('sw.js');  
+        }  
+    </script>  
+    <script type="module" src="app.js"></script>  
 </body>  
 </html>
