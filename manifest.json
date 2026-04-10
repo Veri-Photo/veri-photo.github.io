@@ -4,6 +4,7 @@
   "description": "Sistema de certificación de evidencia digital",
   "start_url": "index.html",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#ffffff",
   "theme_color": "#0d6efd",
   "icons": [
